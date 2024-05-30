@@ -22,12 +22,11 @@ function Header(props) {
   return (
     <header>
       <div className="leftH">
-        <img src={Logo} alt="logo" className="logo" />
         <Link to="/" className="link">
-          <div className="headerItem">Swap</div>
+          <div className="headerItem">Home</div>
         </Link>
         <Link to="/tokens" className="link">
-          <div className="headerItem">Tokens</div>
+          <div className="headerItem">About the project</div>
         </Link>
       </div>
       <div className="rightH">

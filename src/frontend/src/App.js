@@ -1,14 +1,16 @@
 import './App.css';
 import Header from './components/Header';
-import Swap from './components/Swap';
 import Tokens from './components/Tokens';
 import { Routes, Route } from 'react-router-dom';
 import { useConnect, useAccount, useDisconnect } from 'wagmi';
 import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
 import { AuthProvider } from './context/AuthContext';
+import MintNFT from './components/MintNFT/MintNFT';
+import { GlobalProvider } from './context/GlobalContext';
 
 function App() {
-  const { address, isConnected } = useAccount();
+  const isConnected = false;
+  const address = '0x2df9DBfc76ce6E4FAC174a849Bcda0186F7167cE';
   const { connect } = useConnect({
     connector: new MetaMaskConnector({
       options: {
@@ -20,23 +22,27 @@ function App() {
 
   return (
     <AuthProvider>
-      <div className="App">
-        <Header
-          connect={connect}
-          disconnect={disconnect}
-          isConnected={isConnected}
-          address={address}
-        />
-        <div className="mainWindow">
-          <Routes>
-            <Route
-              path="/"
-              element={<Swap isConnected={isConnected} address={address} />}
-            />
-            <Route path="/tokens" element={<Tokens />} />
-          </Routes>
+      <GlobalProvider>
+        <div className="App">
+          <Header
+            connect={connect}
+            disconnect={disconnect}
+            isConnected={isConnected}
+            address={address}
+          />
+          <div className="mainWindow">
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <MintNFT isConnected={isConnected} address={address} />
+                }
+              />
+              <Route path="/tokens" element={<Tokens />} />
+            </Routes>
+          </div>
         </div>
-      </div>
+      </GlobalProvider>
     </AuthProvider>
   );
 }
