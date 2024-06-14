@@ -2,22 +2,20 @@ import React, { useState } from 'react';
 import { Input, message, Button, Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import { useGlobalContext } from '../../context/GlobalContext';
-import { useAccount } from 'wagmi';
 import NFTGrid from '../NFTGrid/NFTGrid';
+import HeroSection from '../HeroSection/HeroSection'; // Import the HeroSection component
 import './MintNFT.css';
 
-function MintNFT() {
+function MintNFT({ address, isConnected, connect, disconnect }) {
   const [name, setName] = useState('');
   const [data, setData] = useState('');
   const [fileList, setFileList] = useState([]);
   const [messageApi, contextHolder] = message.useMessage();
-  const { address, isConnected } = useAccount();
-
   const {
     sendDataToIpfs,
     mintDataToken,
-    getDataFromToken,
     getDataFromTokensForAccount,
+    deployNewContract,
   } = useGlobalContext();
 
   const onNameChange = (e) => {
@@ -58,13 +56,41 @@ function MintNFT() {
       duration: 2.5,
     });
 
-    const mintedNfts = await getDataFromTokensForAccount(
-      '0x2df9DBfc76ce6E4FAC174a849Bcda0186F7167cE'
-    );
+    const mintedNfts = await getDataFromTokensForAccount(address);
+
+    console.log('Minted NFTs: ', mintedNfts);
   };
 
+  const handleDeployContract = async () => {
+    if (isConnected) {
+      const newContractAddress = await deployNewContract(address);
+      messageApi.open({
+        type: 'success',
+        content: `New contract deployed at address=${newContractAddress}.`,
+        duration: 2.5,
+      });
+    } else {
+      messageApi.open({
+        type: 'error',
+        content: 'Please connect to MetaMask.',
+        duration: 2.5,
+      });
+    }
+  };
+
+  if (!address) {
+    return (
+      <HeroSection
+        address={address}
+        isConnected={isConnected}
+        connect={connect}
+        disconnect={disconnect}
+      />
+    ); // Render HeroSection if address is undefined
+  }
+
   return (
-    <>
+    <div className="mint-container">
       {contextHolder}
       <div
         style={{
@@ -75,6 +101,13 @@ function MintNFT() {
       >
         <div className="mintForm" style={{ width: '100%' }}>
           <h4 className="mb-5">Mint Your Data NFT</h4>
+          {/* <Button
+            type="primary"
+            onClick={handleDeployContract}
+            style={{ marginBottom: '10px' }}
+          >
+            Deploy New Contract
+          </Button> */}
           <Input
             placeholder="Your Name"
             value={name}
@@ -105,15 +138,15 @@ function MintNFT() {
           </Upload>
           <button
             type="button"
-            class="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 dark:focus:ring-purple-800 shadow-lg shadow-purple-500/50 dark:shadow-lg dark:shadow-purple-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 mt-2"
+            className="text-white bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 dark:focus:ring-purple-800 shadow-lg shadow-purple-500/50 dark:shadow-lg dark:shadow-purple-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 mt-2"
             onClick={mintNFT}
           >
             Mint your data NFT
           </button>
         </div>
-        <NFTGrid account="0x2df9DBfc76ce6E4FAC174a849Bcda0186F7167cE" />
+        <NFTGrid address={address} />
       </div>
-    </>
+    </div>
   );
 }
 

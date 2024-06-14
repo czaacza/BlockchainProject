@@ -1,18 +1,27 @@
-// globalContext.js
-
 import React, { createContext, useContext, useState } from 'react';
 import Web3 from 'web3';
 
 const GlobalContext = createContext();
 
-// If using authorization (e.g., with an external IPFS service like Infura), replace these with your credentials
-const projectId = 'aaa'; // Replace with your actual project ID if using an external service
-const projectSecretKey = 'projectaaa_secret_key'; // Replace with your actual project secret key if using an external service
+const projectId = 'aaa';
+const projectSecretKey = 'projectaaa_secret_key';
 const authorization = 'Basic ' + btoa(projectId + ':' + projectSecretKey);
 
 const dataTokenAbi = require('../abi/DataToken.json')['abi'];
-const dataTokenContractAddress = '0x5B86220e5e0f625fF9D6fA87e0BB893d1e39EC64';
+const dataTokenBytecode = require('../abi/DataToken.json')['bytecode'][
+  'object'
+];
+// const dataTokenContractAddress = '0x5a6012139EEad9207B780944a55877AF8d8CDb5D';
+// const dataTokenContractAddress = '0xd5035CaBe7fA58867AEEf98c596C9e529781A313';
+const dataTokenContractAddress = '0xcB132184aBb4790AE2f5ec7E8e2B21037F17dE1A';
+
 const web3 = new Web3('http://127.0.0.1:7545');
+const contractCode = web3.eth.getCode(dataTokenContractAddress);
+if (contractCode === '0x') {
+  console.log('Contract not deployed');
+} else {
+  console.log('Contract deployed');
+}
 
 const dataTokenContract = new web3.eth.Contract(
   dataTokenAbi,
@@ -37,7 +46,6 @@ export const GlobalProvider = ({ children }) => {
       );
 
       const resData = await res.json();
-      console.log('resData', resData);
       return resData.IpfsHash;
     } catch (error) {
       console.error('Error adding file to IPFS:', error);
@@ -49,19 +57,18 @@ export const GlobalProvider = ({ children }) => {
       const result = await dataTokenContract.methods
         .mintDataToken(ipfsHash)
         .send({
-          from: '0x2df9DBfc76ce6E4FAC174a849Bcda0186F7167cE',
+          from: userAddress,
           gas: 3000000,
         });
 
-      // Extract the tokenId from the Minted event
       const mintedEvent = result.events.Minted;
       if (mintedEvent && mintedEvent.returnValues) {
         const tokenId = mintedEvent.returnValues.nftId;
-        console.log('Minted NFT with tokenId:', tokenId);
-
-        // set the ipfsUrls and images state
-        setIpfsUrls((prevIpfsUrls) => [...prevIpfsUrls, ipfsHash]);
-        prefetchImages([...ipfsUrls, ipfsHash]);
+        setIpfsUrls((prevIpfsUrls) => [
+          ...prevIpfsUrls,
+          { tokenUri: ipfsHash, tokenId },
+        ]);
+        prefetchImages([...ipfsUrls, { tokenUri: ipfsHash, tokenId }]);
 
         return Number(tokenId);
       } else {
@@ -73,13 +80,11 @@ export const GlobalProvider = ({ children }) => {
     }
   };
 
-  const getDataFromToken = async (tokenId) => {
+  const getDataFromToken = async (tokenId, userAddress) => {
     try {
       const result = await dataTokenContract.methods
-        .getDataItemForToken(tokenId)
-        .call({ from: '0x2df9DBfc76ce6E4FAC174a849Bcda0186F7167cE' });
-
-      console.log('Data from token:', result);
+        .getDataItemForToken(tokenId, userAddress)
+        .call({ from: userAddress });
 
       return result.dataIpfsURL;
     } catch (error) {
@@ -89,30 +94,32 @@ export const GlobalProvider = ({ children }) => {
 
   const getDataFromTokensForAccount = async (account) => {
     try {
-      // Get the total number of tokens minted
       const totalTokens = await dataTokenContract.methods
         .numberOfTokens()
         .call();
 
-      console.log('Total tokens:', totalTokens);
+      const ipfsUrlsAndIds = [];
 
-      const ipfsUrls = [];
-
-      for (let tokenId = 1; tokenId <= totalTokens; tokenId++) {
-        const tokenURI = await dataTokenContract.methods
-          .tokenURI(tokenId)
-          .call({ from: account });
-        ipfsUrls.push(tokenURI);
+      for (let tokenId = 1; tokenId <= Number(totalTokens); tokenId++) {
+        try {
+          const tokenUri = await dataTokenContract.methods
+            .tokenURI(tokenId)
+            .call({ from: account });
+          ipfsUrlsAndIds.push({ tokenUri, tokenId });
+        } catch (error) {
+          continue;
+        }
       }
 
-      console.log('IPFS URLs for account:', ipfsUrls);
-      return ipfsUrls;
+      return ipfsUrlsAndIds;
     } catch (error) {
       console.error('Error getting data from tokens for account:', error);
     }
   };
 
   const generatePlaceholderImage = (url) => {
+    if (!url) return '';
+    console.log('Generating placeholder image for:', url);
     const hash = url
       .split('')
       .reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -122,8 +129,10 @@ export const GlobalProvider = ({ children }) => {
     )}/FFFFFF?text=Your+NFT`;
   };
 
-  const prefetchImages = (urls) => {
-    urls.forEach((url) => {
+  const prefetchImages = (urlsAndIds) => {
+    urlsAndIds.forEach((urlAndId) => {
+      const url = urlAndId.tokenUri;
+
       const img = new Image();
       const fullUrl = `https://moccasin-just-wasp-741.mypinata.cloud/ipfs/${url}`;
       img.src = fullUrl;
@@ -142,9 +151,60 @@ export const GlobalProvider = ({ children }) => {
   };
 
   const fetchData = async (account) => {
-    const urls = await getDataFromTokensForAccount(account);
-    setIpfsUrls(urls);
+    if (!account) {
+      setIpfsUrls([]);
+      setImages({});
+      return;
+    }
+    const urlsAndIds = await getDataFromTokensForAccount(account);
+
+    setIpfsUrls(urlsAndIds);
+
+    const urls = urlsAndIds.map((urlAndId) => urlAndId.tokenUri);
     prefetchImages(urls);
+  };
+
+  const deployNewContract = async (userAddress) => {
+    try {
+      const contract = new web3.eth.Contract(dataTokenAbi);
+      contract.options.data = dataTokenBytecode;
+      const deployTx = contract.deploy({ arguments: [userAddress] });
+      const deployedContract = await deployTx
+        .send({
+          from: userAddress,
+          gas: 1000000,
+        })
+        .once('transactionHash', (txHash) => {
+          console.log('Creating contract with txHash: ', txHash);
+        });
+      console.log(`Contract deployed at ${deployedContract.options.address}`);
+
+      return deployedContract.options.address;
+    } catch (error) {
+      console.error('Error deploying new contract:', error);
+    }
+  };
+
+  const transferTokenOwnership = async (newOwner, tokenIds, userAddress) => {
+    try {
+      console.log(
+        'Transferring token ownership:',
+        newOwner,
+        tokenIds,
+        userAddress
+      );
+      const result = await dataTokenContract.methods
+        .transferTokenOwnership(newOwner, tokenIds)
+        .send({ from: userAddress });
+
+      const mintedEvent = result.events.TokenOwnershipTransfered;
+      console.log('Minted event', mintedEvent);
+      if (mintedEvent && mintedEvent.returnValues) {
+        fetchData(userAddress);
+      }
+    } catch (error) {
+      console.error('Error transferring token ownership:', error);
+    }
   };
 
   return (
@@ -154,10 +214,12 @@ export const GlobalProvider = ({ children }) => {
         mintDataToken,
         getDataFromToken,
         getDataFromTokensForAccount,
+        transferTokenOwnership,
         ipfsUrls,
         images,
         fetchData,
         generatePlaceholderImage,
+        deployNewContract,
       }}
     >
       {children}

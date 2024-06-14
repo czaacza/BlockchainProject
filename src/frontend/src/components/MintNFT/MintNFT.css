@@ -1,3 +1,6 @@
 .mintForm {
   max-width: 500px !important;
 }
+.mint-container {
+  height: 100vh;
+}

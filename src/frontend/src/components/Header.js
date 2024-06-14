@@ -3,10 +3,12 @@ import Logo from '../moralis-logo.svg';
 import Eth from '../eth.svg';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useGlobalContext } from '../context/GlobalContext';
 
 function Header(props) {
   const { address, isConnected, connect, disconnect } = props;
   const { login } = useAuth();
+  const { fetchData } = useGlobalContext();
 
   async function handleConnect() {
     if (!isConnected) {
@@ -15,18 +17,27 @@ function Header(props) {
       disconnect();
     }
   }
+
   async function handleLogin() {
     login(address, 'name', 'password');
+  }
+
+  async function handleLogout() {
+    disconnect();
+    fetchData('');
   }
 
   return (
     <header>
       <div className="leftH">
         <Link to="/" className="link">
-          <div className="headerItem">Home</div>
+          <div className="headerItem">Strona główna</div>
         </Link>
-        <Link to="/tokens" className="link">
-          <div className="headerItem">About the project</div>
+        <Link to="/" className="link">
+          <div className="headerItem">O projekcie</div>
+        </Link>
+        <Link to="/" className="link">
+          <div className="headerItem">Kontakt</div>
         </Link>
       </div>
       <div className="rightH">
@@ -37,11 +48,11 @@ function Header(props) {
         <div className="connectButton" onClick={handleConnect}>
           {isConnected
             ? address.slice(0, 4) + '...' + address.slice(38)
-            : 'Connect'}
+            : 'Połącz konto'}
         </div>
         {isConnected && (
-          <div className="connectButton" onClick={handleLogin}>
-            Login
+          <div className="connectButton" onClick={handleLogout}>
+            Logout
           </div>
         )}
       </div>

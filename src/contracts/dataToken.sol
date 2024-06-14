@@ -12,12 +12,8 @@ import "../openzeppelin-contracts-4.8.0/contracts/access/Ownable.sol";
 contract DataToken is ERC721, ERC721URIStorage, Ownable {
     uint256 public numberOfTokens;
 
-    // address is set in constructor or in changeDoctor()
     address private _doctor;
 
-    // constructor sets contract owner to the patient who deployed it
-    // it also sets _doctor to patient's current doctor (requires doctor's address)
-    // contract is deployed once per patient
     constructor(address doctorAddress) ERC721("DataToken", "DTK") {
         _transferOwnership(msg.sender);
         _doctor = doctorAddress;
@@ -84,7 +80,6 @@ contract DataToken is ERC721, ERC721URIStorage, Ownable {
         }
     }
 
-    // change ownership of data tokens passed in an array
     function transferTokenOwnership(address to, uint256[] memory tokenIdArray)
         public
         onlyOwner
@@ -108,7 +103,6 @@ contract DataToken is ERC721, ERC721URIStorage, Ownable {
         );
         address _patient = owner();
         address _tokenOwner = ownerOf(tokenId);
-        //only doctor or the patient or someone who bought the data can see the URI
         require(
             msg.sender == _patient ||
                 msg.sender == _doctor ||
@@ -118,7 +112,6 @@ contract DataToken is ERC721, ERC721URIStorage, Ownable {
         return super.tokenURI(tokenId);
     }
 
-   // transfer contract ownership
     function transferOwnership(address newOwner)
         public
         onlyOwner
@@ -138,7 +131,6 @@ contract DataToken is ERC721, ERC721URIStorage, Ownable {
         return _doctor;
     }
 
-    // _burn function is an override required by Solidity
     function _burn(uint256 tokenId)
         internal
         override(ERC721, ERC721URIStorage)

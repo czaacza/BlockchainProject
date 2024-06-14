@@ -1,0 +1,21 @@
+.nft-modal-container {
+  height: 50vh;
+  text-align: left;
+}
+
+.nft-modal-container h2 {
+  text-align: center;
+}
+
+.modal-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.modal-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}

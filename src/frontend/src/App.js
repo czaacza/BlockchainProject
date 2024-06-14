@@ -7,10 +7,14 @@ import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
 import { AuthProvider } from './context/AuthContext';
 import MintNFT from './components/MintNFT/MintNFT';
 import { GlobalProvider } from './context/GlobalContext';
+import { useEffect } from 'react';
+import Footer from './components/Footer/Footer';
 
 function App() {
-  const isConnected = false;
-  const address = '0x2df9DBfc76ce6E4FAC174a849Bcda0186F7167cE';
+  const { address, isConnected } = useAccount();
+
+  console.log('App() Address:', address);
+
   const { connect } = useConnect({
     connector: new MetaMaskConnector({
       options: {
@@ -35,12 +39,18 @@ function App() {
               <Route
                 path="/"
                 element={
-                  <MintNFT isConnected={isConnected} address={address} />
+                  <MintNFT
+                    isConnected={isConnected}
+                    address={address}
+                    connect={connect}
+                    disconnect={disconnect}
+                  />
                 }
               />
               <Route path="/tokens" element={<Tokens />} />
             </Routes>
           </div>
+          <Footer />
         </div>
       </GlobalProvider>
     </AuthProvider>

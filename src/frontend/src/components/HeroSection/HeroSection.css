@@ -1,0 +1,24 @@
+.hero-container {
+  height: 70vh;
+  text-align: left;
+}
+.hero-image {
+  width: 80%;
+}
+
+.connectButton {
+  background-color: #243056;
+  padding: 10px;
+  padding-right: 20px;
+  padding-left: 20px;
+  border-radius: 100px;
+  color: #5981f3;
+  font-weight: bold;
+  transition: 0.3s;
+  display: flex;
+}
+
+.connectButton:hover {
+  cursor: pointer;
+  color: #3b4874;
+}
