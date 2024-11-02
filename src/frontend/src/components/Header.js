@@ -1,29 +1,24 @@
 import React from 'react';
-import Logo from '../moralis-logo.svg';
 import Eth from '../eth.svg';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { useGlobalContext } from '../context/GlobalContext';
+import { useAuth } from '../context/AuthContext';
 
 function Header(props) {
-  const { address, isConnected, connect, disconnect } = props;
-  const { login } = useAuth();
+  const { address, isConnected } = props;
   const { fetchData } = useGlobalContext();
+  const { login, logout } = useAuth();
 
   async function handleConnect() {
     if (!isConnected) {
-      await connect();
+      await login();
     } else {
-      disconnect();
+      logout();
     }
   }
 
-  async function handleLogin() {
-    login(address, 'name', 'password');
-  }
-
   async function handleLogout() {
-    disconnect();
+    logout();
     fetchData('');
   }
 

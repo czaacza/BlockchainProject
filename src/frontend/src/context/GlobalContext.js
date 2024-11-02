@@ -1,36 +1,17 @@
 import React, { createContext, useContext, useState } from 'react';
-import Web3 from 'web3';
+import { useAuth } from '../context/AuthContext';
+import nftPlaceholder from '../img/new-logo-nobg.png';
 
 const GlobalContext = createContext();
-
-const projectId = 'aaa';
-const projectSecretKey = 'projectaaa_secret_key';
-const authorization = 'Basic ' + btoa(projectId + ':' + projectSecretKey);
-
-const dataTokenAbi = require('../abi/DataToken.json')['abi'];
-const dataTokenBytecode = require('../abi/DataToken.json')['bytecode'][
-  'object'
-];
-// const dataTokenContractAddress = '0x5a6012139EEad9207B780944a55877AF8d8CDb5D';
-// const dataTokenContractAddress = '0xd5035CaBe7fA58867AEEf98c596C9e529781A313';
-const dataTokenContractAddress = '0xcB132184aBb4790AE2f5ec7E8e2B21037F17dE1A';
-
-const web3 = new Web3('http://127.0.0.1:7545');
-const contractCode = web3.eth.getCode(dataTokenContractAddress);
-if (contractCode === '0x') {
-  console.log('Contract not deployed');
-} else {
-  console.log('Contract deployed');
-}
-
-const dataTokenContract = new web3.eth.Contract(
-  dataTokenAbi,
-  dataTokenContractAddress
-);
 
 export const GlobalProvider = ({ children }) => {
   const [ipfsUrls, setIpfsUrls] = useState([]);
   const [images, setImages] = useState({});
+
+  const [dataItems, setDataItems] = useState([]);
+
+  const { web3, dataTokenContract, dataTokenAbi, dataTokenBytecode } =
+    useAuth();
 
   const sendDataToIpfs = async (data) => {
     try {
@@ -52,10 +33,10 @@ export const GlobalProvider = ({ children }) => {
     }
   };
 
-  const mintDataToken = async (ipfsHash, userAddress) => {
+  const mintDataToken = async (owner, ipfsHash, userAddress) => {
     try {
       const result = await dataTokenContract.methods
-        .mintDataToken(ipfsHash)
+        .mintDataToken(owner, ipfsHash)
         .send({
           from: userAddress,
           gas: 3000000,
@@ -69,7 +50,6 @@ export const GlobalProvider = ({ children }) => {
           { tokenUri: ipfsHash, tokenId },
         ]);
         prefetchImages([...ipfsUrls, { tokenUri: ipfsHash, tokenId }]);
-
         return Number(tokenId);
       } else {
         console.error('Minted event not found in transaction receipt');
@@ -85,7 +65,6 @@ export const GlobalProvider = ({ children }) => {
       const result = await dataTokenContract.methods
         .getDataItemForToken(tokenId, userAddress)
         .call({ from: userAddress });
-
       return result.dataIpfsURL;
     } catch (error) {
       console.error('Error getting data from token:', error);
@@ -94,39 +73,37 @@ export const GlobalProvider = ({ children }) => {
 
   const getDataFromTokensForAccount = async (account) => {
     try {
-      const totalTokens = await dataTokenContract.methods
-        .numberOfTokens()
-        .call();
+      const tokenDatas = await dataTokenContract.methods
+        .getDataItemsForOwner(account)
+        .call({ from: account });
 
-      const ipfsUrlsAndIds = [];
-
-      for (let tokenId = 1; tokenId <= Number(totalTokens); tokenId++) {
-        try {
-          const tokenUri = await dataTokenContract.methods
-            .tokenURI(tokenId)
-            .call({ from: account });
-          ipfsUrlsAndIds.push({ tokenUri, tokenId });
-        } catch (error) {
-          continue;
-        }
-      }
-
-      return ipfsUrlsAndIds;
+      return tokenDatas;
     } catch (error) {
       console.error('Error getting data from tokens for account:', error);
+      return [];
     }
   };
 
-  const generatePlaceholderImage = (url) => {
+  const generatePlaceholderImage = async (url) => {
     if (!url) return '';
-    console.log('Generating placeholder image for:', url);
-    const hash = url
-      .split('')
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const color = `#${((hash & 0xffffff) << 0).toString(16).padStart(6, '0')}`;
-    return `https://via.placeholder.com/200/${color.substr(
-      1
-    )}/FFFFFF?text=Your+NFT`;
+
+    const fullUrl = `https://moccasin-just-wasp-741.mypinata.cloud/ipfs/${url}`;
+    const placeholderUrl = nftPlaceholder;
+
+    const checkedImg = await checkImage(fullUrl)
+      .then(() => fullUrl)
+      .catch(() => placeholderUrl);
+
+    return checkedImg;
+  };
+
+  const checkImage = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => resolve();
+      img.onerror = () => reject();
+    });
   };
 
   const prefetchImages = (urlsAndIds) => {
@@ -156,12 +133,34 @@ export const GlobalProvider = ({ children }) => {
       setImages({});
       return;
     }
+
     const urlsAndIds = await getDataFromTokensForAccount(account);
 
     setIpfsUrls(urlsAndIds);
 
     const urls = urlsAndIds.map((urlAndId) => urlAndId.tokenUri);
     prefetchImages(urls);
+  };
+
+  const getDoctorDataItems = async (account) => {
+    try {
+      const newDataItems = await dataTokenContract.methods
+        .getDataItemsForDoctor()
+        .call({ from: account });
+      const tokenIds = newDataItems.map((item) => Number(item.dataTokenId));
+      const owners = await dataTokenContract.methods
+        .getOwnersForTokenIds(tokenIds)
+        .call({ from: account });
+
+      const newDataItemsWithOwners = newDataItems.map((item, index) => ({
+        ...item,
+        owner: owners[index],
+      }));
+
+      setDataItems(newDataItemsWithOwners);
+    } catch (error) {
+      console.error('Error getting data items for doctor:', error);
+    }
   };
 
   const deployNewContract = async (userAddress) => {
@@ -220,6 +219,8 @@ export const GlobalProvider = ({ children }) => {
         fetchData,
         generatePlaceholderImage,
         deployNewContract,
+        getDoctorDataItems,
+        dataItems,
       }}
     >
       {children}

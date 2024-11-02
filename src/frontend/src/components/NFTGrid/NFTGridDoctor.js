@@ -4,17 +4,41 @@ import NFTModal from '../NFTModal/NFTModal';
 import './NFTGrid.css';
 import { useAuth } from '../../context/AuthContext';
 
-const NFTGrid = ({ address }) => {
-  const { ipfsUrls, fetchData, images, generatePlaceholderImage } =
+const NFTGridDoctor = ({ address }) => {
+  const { dataItems, getDoctorDataItems, generatePlaceholderImage } =
     useGlobalContext();
   const [selectedNFT, setSelectedNFT] = useState(null);
-  const { isDoctor } = useAuth();
-
+  const [imageUrlMap, setImageUrlMap] = useState({});
+  const [dataItemsByOwner, setDataItemsByOwner] = useState({});
   useEffect(() => {
     if (address) {
-      fetchData(address);
+      getDoctorDataItems(address);
     }
   }, [address]);
+  useEffect(() => {
+    const loadImages = async () => {
+      const urls = {};
+      for (const item of dataItems) {
+        urls[item.dataIpfsURL] = await generatePlaceholderImage(
+          item.dataIpfsURL
+        );
+      }
+      setImageUrlMap(urls);
+    };
+    const loadDataItemsByOwner = async () => {
+      const dataItemsByOwner = {};
+      for (const item of dataItems) {
+        if (!dataItemsByOwner[item.owner]) {
+          dataItemsByOwner[item.owner] = [];
+        }
+        dataItemsByOwner[item.owner].push(item);
+      }
+      setDataItemsByOwner(dataItemsByOwner);
+    };
+
+    loadImages();
+    loadDataItemsByOwner();
+  }, [dataItems, generatePlaceholderImage]);
 
   const openInNewTab = (url) => {
     const fullUrl = `https://moccasin-just-wasp-741.mypinata.cloud/ipfs/${url}`;
@@ -31,16 +55,13 @@ const NFTGrid = ({ address }) => {
     link.remove();
   };
 
-  const handleViewClick = (urlAndId, index) => {
-    console.log('Handle view click', urlAndId, index);
+  const handleViewClick = (dataItem, index) => {
     setSelectedNFT({
       name: `Token ${index}`,
-      image:
-        images[urlAndId.tokenUri] ||
-        generatePlaceholderImage(urlAndId.tokenUri),
-      owner: address,
-      url: urlAndId.tokenUri,
-      tokenId: urlAndId.tokenId,
+      image: imageUrlMap[dataItem.dataIpfsURL] || '',
+      owner: dataItem.owner,
+      url: dataItem.dataIpfsURL,
+      tokenId: dataItem.dataTokenId,
     });
   };
 
@@ -50,20 +71,18 @@ const NFTGrid = ({ address }) => {
 
   return (
     <div className="nft-grid-container">
-      <h4 className="mb-5">Your Data NFTs</h4>
+      <h2 className="mb-5 subheading">Hello, Doctor</h2>
+      <h4 className="mb-5">Your Patients NFTs</h4>
       <div className="nft-grid">
-        {ipfsUrls &&
-          ipfsUrls.map((url, index) => (
+        {dataItems &&
+          dataItems.map((dataItem, index) => (
             <div className="nft-item" key={index}>
               <div
                 className="nft-image"
-                onClick={() => handleViewClick(url, index)}
+                onClick={() => handleViewClick(dataItem, index)}
               >
                 <img
-                  src={
-                    images[url.tokenUri] ||
-                    (url.tokenUri && generatePlaceholderImage(url.tokenUri))
-                  }
+                  src={imageUrlMap[dataItem.dataIpfsURL] || ''}
                   alt={`Token ${index}`}
                 />
               </div>
@@ -72,14 +91,14 @@ const NFTGrid = ({ address }) => {
                 <button
                   type="button"
                   className="text-white bg-gray-800 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-700 dark:border-gray-700"
-                  onClick={() => handleViewClick(url, index)}
+                  onClick={() => handleViewClick(dataItem, index)}
                 >
                   View
                 </button>
                 <button
                   type="button"
                   className="text-white bg-gray-800 hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-700 dark:border-gray-700"
-                  onClick={() => downloadFile(url.tokenUri)}
+                  onClick={() => downloadFile(dataItem.dataIpfsURL)}
                 >
                   Download
                 </button>
@@ -92,11 +111,11 @@ const NFTGrid = ({ address }) => {
           isOpen={!!selectedNFT}
           onClose={closeModal}
           nft={selectedNFT}
-          ownerAddress={address}
+          ownerAddress={selectedNFT.owner}
         />
       )}
     </div>
   );
 };
 
-export default NFTGrid;
+export default NFTGridDoctor;

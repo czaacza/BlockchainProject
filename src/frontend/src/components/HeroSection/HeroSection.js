@@ -1,13 +1,16 @@
 import React from 'react';
 import './HeroSection.css';
 import nftExample from '../../img/new-logo-nobg.png';
+import { useAuth } from '../../context/AuthContext';
 
-function HeroSection({ address, isConnected, connect, disconnect }) {
+function HeroSection({ address, isConnected }) {
+  const { login, logout } = useAuth();
+
   async function handleConnect() {
     if (!isConnected) {
-      await connect();
+      await login();
     } else {
-      disconnect();
+      logout();
     }
   }
 

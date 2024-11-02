@@ -2,49 +2,27 @@ import './App.css';
 import Header from './components/Header';
 import Tokens from './components/Tokens';
 import { Routes, Route } from 'react-router-dom';
-import { useConnect, useAccount, useDisconnect } from 'wagmi';
-import { MetaMaskConnector } from 'wagmi/connectors/metaMask';
+import { useAccount } from 'wagmi';
 import { AuthProvider } from './context/AuthContext';
 import MintNFT from './components/MintNFT/MintNFT';
 import { GlobalProvider } from './context/GlobalContext';
-import { useEffect } from 'react';
 import Footer from './components/Footer/Footer';
 
 function App() {
   const { address, isConnected } = useAccount();
-
-  console.log('App() Address:', address);
-
-  const { connect } = useConnect({
-    connector: new MetaMaskConnector({
-      options: {
-        UNSTABLE_shimOnConnectSelectAccount: true,
-      },
-    }),
-  });
-  const { disconnect } = useDisconnect();
+  console.log('Account address:', address);
 
   return (
     <AuthProvider>
       <GlobalProvider>
         <div className="App">
-          <Header
-            connect={connect}
-            disconnect={disconnect}
-            isConnected={isConnected}
-            address={address}
-          />
+          <Header isConnected={isConnected} address={address} />
           <div className="mainWindow">
             <Routes>
               <Route
                 path="/"
                 element={
-                  <MintNFT
-                    isConnected={isConnected}
-                    address={address}
-                    connect={connect}
-                    disconnect={disconnect}
-                  />
+                  <MintNFT isConnected={isConnected} address={address} />
                 }
               />
               <Route path="/tokens" element={<Tokens />} />

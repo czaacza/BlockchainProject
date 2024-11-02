@@ -8,8 +8,6 @@ const NFTModal = ({ isOpen, onClose, nft, ownerAddress }) => {
 
   if (!isOpen) return null;
 
-  console.log('NFT MODAL NFT:', nft);
-
   const handleTransfer = async () => {
     try {
       const result = await transferTokenOwnership(
